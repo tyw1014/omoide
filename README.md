@@ -1,0 +1,100 @@
+# Omoide（思い出）
+
+**Everyday moments, woven into your story.**
+
+讓日子不只是過去，也能被好好記得。
+
+A working, single-user journaling MVP for the 2026 ASUS UGen AI League Hackathon. Capture a memory, revisit a week, and connect related records into a Life Chapter. Python, Streamlit, SQLite, and local media storage keep the prototype small enough to run on a laptop.
+
+## Run locally
+
+Requires Python **3.11 or newer**. The cloud instance was tested with Python 3.12.14 on Linux.
+
+```bash
+cd omoide
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --require-hashes -r requirements.lock
+streamlit run app.py
+```
+
+On Windows, activate with `.venv\Scripts\activate` instead. Open the local address printed by Streamlit. The checked-in server configuration binds to the loopback interface and disables usage telemetry.
+
+**No API key is required.** The application defaults to **Demo Mode**: offline keyword rules for metadata and original-record excerpts for stories. These results are labeled `Demo · rule-based`; they are not live LLM inference.
+
+Click **Load Synthetic Demo Data** on the empty home screen, or run:
+
+```bash
+python demo_data.py
+```
+
+This adds 36 fictional records between September 1 and October 11, 2026. Every sample is marked **Synthetic Demo Data**. Stable sample keys prevent duplicate insertion when loading again. Deleted sample records can be reloaded; edited samples retain their keys and are preserved. Sample loading always runs offline, including when cloud processing is selected.
+
+## What works
+
+- **Memories:** create, view, edit, search, filter, and delete records; choose the event date independently from the creation timestamp.
+- **Metadata:** original descriptions remain separate from generated summaries, tags, activity, explicit entities, and milestone flags. Correct metadata manually or explicitly re-analyze an edited record.
+- **Rewind:** calendar weeks (Monday–Sunday), months, and years, with deterministic counts of memories, topics, sports records, locations, and milestones. Generate and retain a cited recap for the selected period.
+- **Life Chapters:** suggestions based on specific interests or explicit trip locations; confirm membership before creating a chapter. Edit the title, description, and membership; one memory can belong to multiple chapters. Generate a cited story and view the chronological timeline.
+- **Traceability:** every story section has source buttons that open the original entry. Editing, deleting, or changing chapter membership clears affected stored stories; additions clear recaps for the affected date range. Regenerate to reflect current records.
+- **Photos:** JPEG, PNG, and WebP uploads and previews; max 5 MB / 25 megapixels. Images are decoded, oriented, resized, and saved as local JPEGs without camera metadata. Deleting or replacing an attachment cleans up the old file. **Photo contents are not analyzed.**
+- **Export:** download JSON with originals, metadata, chapter memberships, and local photo filenames. Images are not embedded; import is not implemented.
+
+## Optional cloud AI
+
+Copy `.env.example` to `.env` and set these variables locally:
+
+```dotenv
+OMOIDE_API_KEY=<your OpenAI key>
+OMOIDE_MODEL=gpt-4o-mini
+```
+
+Keep `.env` out of Git. In Codex cloud, enter the optional `OMOIDE_API_KEY` securely in environment settings; the required HTTPS destination is `api.openai.com`. Never put a key in source code, chat, or setup scripts.
+
+In **Processing & privacy**, select **Cloud AI**, then check the explicit consent box. Only a submitted extraction or story-generation action sends data: extraction uses the original text and supplied location; stories use the selected entries' original text, IDs, dates, and locations. Browsing and sample loading do not send journal records. Photographs are never transmitted. Switching back to Demo Mode clears consent.
+
+The adapter uses OpenAI structured JSON schema output, validates it with Pydantic, and rejects source IDs outside the selected records. It uses a 25-second SDK timeout and one retry. Missing consent or credentials keeps processing offline; invalid JSON, refusal, timeout, or API failure produces a labeled Demo fallback with a visible notice. Cloud narratives are limited to 100 records per request; larger selections fall back to Demo Mode. Existing results keep the processing label used when they were created.
+
+**Live OpenAI requests have not been tested:** this environment has no API key. Mocked tests exercise structured requests, malformed output, timeout, and consent gates. Citations establish which records a result references; they cannot prove every model-generated sentence is factually correct. Review generated text and correct metadata as needed.
+
+## Storage and privacy
+
+By default, the database is `data/omoide.sqlite3` and photos are in `data/media/`. Set `OMOIDE_DATA_DIR` to use another directory; relative values resolve against the project root. `.env`, `.venv`, generated data, and caches are ignored by Git. Directories use private filesystem permissions on Linux, and database/media files use owner-only permissions.
+
+This MVP has **no accounts, authentication, encryption at rest, or multi-user isolation**. Use it on a trusted private machine. Keep its loopback binding; do not expose the server as a public journal service. Back up the data directory while the app is stopped. Deletion removes current records and media, and clears affected stories; it does not erase previously downloaded exports or filesystem backups.
+
+## Test
+
+```bash
+python -m pytest -q
+python -m pip check
+```
+
+The suite covers persistence after reopening, CRUD, foreign keys, story invalidation, occurrence-date statistics and calendar boundaries, validated metadata, cloud error fallback and consent, conservative grouping, many-to-many memberships, citations, photo cleanup, repeatable sample loading, and the Streamlit capture → recap → chapter → original → edit → delete flow.
+
+See [VALIDATION.md](docs/VALIDATION.md) for executed checks and [DEMO.md](docs/DEMO.md) for the three-minute presentation script.
+
+## Project map
+
+| File | Responsibility |
+| --- | --- |
+| `app.py` | Streamlit navigation, journal forms, cards, timelines, consent |
+| `config.py` | `.env` loading and private data directory |
+| `database.py` | SQLite schema, queries, foreign keys, story invalidation |
+| `models.py` | Validated original-input and structured-output contracts |
+| `ai_service.py` | Provider interface, offline rules, OpenAI adapter, prompts |
+| `memory_service.py` | Memory lifecycle and photograph storage |
+| `recap_service.py` | Calendar periods, database-derived statistics, recaps |
+| `chapter_service.py` | Conservative suggestions and chapter narratives |
+| `demo_data.py` | Repeatable fictional dataset |
+| `tests/` | Business logic and Streamlit interaction tests |
+
+`requirements.txt` pins direct dependencies; `requirements.lock` pins transitive dependencies with artifact hashes, resolved for Python 3.11 compatibility. Refresh intentionally with `uv pip compile requirements.txt --python-version 3.11 --generate-hashes --output-file requirements.lock`, then reinstall and retest. The cloud setup uses the lockfile without rewriting it.
+
+## Scope and next steps
+
+All P0 flows are implemented. P1 includes photos, monthly/yearly recaps, metadata editing, empty/error states, and basic JSON export.
+
+Demo processing is deliberately simple: it recognizes a small English/Traditional Chinese topic vocabulary and explicit milestone words, leaves people unknown, and cannot infer that an unnamed later achievement continues an earlier hobby. Trip suggestions use the named location; separate trips to the same location can appear together. Membership confirmation and editing provide correction. The interface is primarily English and supports Chinese journal text.
+
+Future work: authenticate and encrypt before shared hosting; evaluate better grounding and topic continuity; add data import; test a local inference provider, image understanding, and transcription. **ASUS UGen Intel Arc Pro B70 32GB integration is planned for Stage II and has not been verified.** This prototype does not perform GPU inference, video understanding, or psychological assessment.
