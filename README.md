@@ -8,17 +8,62 @@ A working, single-user journaling MVP for the 2026 ASUS UGen AI League Hackathon
 
 ## Run locally
 
-Requires Python **3.11 or newer**. The cloud instance was tested with Python 3.12.14 on Linux.
+### 1. Install the prerequisites and get the project
 
-```bash
+Install [Python](https://www.python.org/downloads/) **3.11 or newer** (3.12 recommended) and [Git](https://git-scm.com/downloads). On Windows, enable the Python installer option to add Python to `PATH` if offered. The cloud instance was tested with Python 3.12.14 on Linux; macOS and Windows have not been tested.
+
+Open **Terminal** on Linux/macOS, or **PowerShell** / **Command Prompt** on Windows, then download the project:
+
+```text
+git clone https://github.com/tyw1014/omoide.git
 cd omoide
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --require-hashes -r requirements.lock
-streamlit run app.py
 ```
 
-On Windows, activate with `.venv\Scripts\activate` instead. Open the local address printed by Streamlit. The checked-in server configuration binds to the loopback interface and disables usage telemetry.
+If you already have the project, open a terminal in its `omoide` folder and skip both commands above. Run the commands below from the folder containing `app.py` and `requirements.lock`.
+
+### 2. Set up and launch for your operating system
+
+#### Linux (Bash)
+
+Check that `python3 --version` reports 3.11 or newer, then run:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --require-hashes -r requirements.lock
+python -m streamlit run app.py
+```
+
+On Ubuntu/Debian, if creating the environment reports that `venv` or `ensurepip` is missing, install the matching venv package (for example, `sudo apt install python3.12-venv` for Python 3.12), then retry with that Python interpreter.
+
+#### macOS (Terminal, Zsh or Bash)
+
+Check that `python3 --version` reports 3.11 or newer. If it reports an older version, install a supported Python version using the link above. Then run:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --require-hashes -r requirements.lock
+python -m streamlit run app.py
+```
+
+#### Windows (PowerShell or Command Prompt)
+
+Check that `py -3 --version` reports 3.11 or newer, then run these commands in either shell:
+
+```text
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements.lock
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+If `py` is unavailable but `python --version` reports 3.11 or newer, use `python -m venv .venv` for the first command instead. The remaining commands stay the same. These commands use the virtual environment directly, so activation and PowerShell execution-policy changes are unnecessary. For other `python` commands in this README, use `.\.venv\Scripts\python.exe` in place of `python` on Windows.
+
+### 3. Open the app, stop it, and run it again
+
+Open the local address printed by Streamlit in your browser. The checked-in server configuration binds to the loopback interface and disables usage telemetry. Keep the terminal open while using the app; press **Ctrl+C** in that terminal to stop it.
+
+For later launches, open a terminal in the project folder. On Linux/macOS, run `source .venv/bin/activate`, then `python -m streamlit run app.py`. On Windows, run `.\.venv\Scripts\python.exe -m streamlit run app.py`. You only need to reinstall dependencies when the dependency files change or you recreate the virtual environment.
 
 **No API key is required.** The application defaults to **Demo Mode**: offline keyword rules for metadata and original-record excerpts for stories. These results are labeled `Demo · rule-based`; they are not live LLM inference.
 
