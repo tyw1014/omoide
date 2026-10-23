@@ -1,8 +1,10 @@
 # Omoide（思い出）
 
-**Everyday moments, woven into your story.**
+**Tracing memories through everyday moments.**
 
-讓日子不只是過去，也能被好好記得。
+在平凡瑣碎的日常裡，找出回憶的軌跡。
+
+何気ない日々に、思い出の軌跡を
 
 A working, single-user journaling MVP for the 2026 ASUS UGen AI League Hackathon. Capture a memory, revisit a week, and connect related records into a Life Chapter. Python, Streamlit, SQLite, and local media storage keep the prototype small enough to run on a laptop.
 

@@ -222,7 +222,12 @@ if page == "Memories":
     else:
         st.markdown('<p class="eyebrow">Your life, one moment at a time</p>', unsafe_allow_html=True)
         st.title("Small moments. A story only you can tell.")
-        st.markdown('<p class="intro">Everyday moments, woven into your story.<br>讓日子不只是過去，也能被好好記得。</p>', unsafe_allow_html=True)
+        st.markdown(
+            '<p class="intro">Tracing memories through everyday moments.<br>'
+            '在平凡瑣碎的日常裡，找出回憶的軌跡。<br>'
+            '何気ない日々に、思い出の軌跡を</p>',
+            unsafe_allow_html=True,
+        )
         top = st.columns([1, 1, 2])
         top[0].button("＋ Add a memory", type="primary", on_click=navigate, args=("Add memory",), use_container_width=True)
         top[1].button("Revisit your week →", on_click=navigate, args=("Rewind",), use_container_width=True)
