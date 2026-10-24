@@ -7,7 +7,7 @@ import pytest
 from PIL import Image
 from pydantic import ValidationError
 
-from ai_service import AIService, CloudProvider, DEMO_LABEL, DemoProvider
+from ai_service import AIService, CloudProvider, DEMO_LABEL, DemoProvider, GeminiProvider
 from chapter_service import ChapterService, suggestions
 from database import Database
 from demo_data import load_demo
@@ -101,11 +101,12 @@ def test_validated_ai_metadata_before_insertion(db, service):
     assert db.list_entries() == []
 
 
+@pytest.mark.parametrize("provider_type", [CloudProvider, GeminiProvider])
 @pytest.mark.parametrize("bad_output", ["not json", '{"summary":"missing fields"}', '{}'])
-def test_cloud_malformed_output_falls_back_without_leaking(bad_output):
+def test_cloud_malformed_output_falls_back_without_leaking(bad_output, provider_type):
     client = Mock()
     client.chat.completions.create.return_value = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(refusal=None, content=bad_output))])
-    ai = AIService(CloudProvider("test-key", consent=True, client=client))
+    ai = AIService(provider_type("test-key", consent=True, client=client))
     result = ai.extract("今天跟朋友打籃球，第一次投進三分球！")
     assert result.mode == DEMO_LABEL
     assert "Basketball" in result.value.tags
@@ -113,22 +114,24 @@ def test_cloud_malformed_output_falls_back_without_leaking(bad_output):
     assert "test-key" not in result.note
 
 
-def test_cloud_consent_guard_and_structured_request():
+@pytest.mark.parametrize("provider_type", [CloudProvider, GeminiProvider])
+def test_cloud_consent_guard_and_structured_request(provider_type):
     client = Mock()
     with pytest.raises(PermissionError):
-        CloudProvider("test-key", client=client)
+        provider_type("test-key", client=client)
     client.chat.completions.create.assert_not_called()
     valid = DemoProvider().extract("Basketball practice").model_dump_json()
     client.chat.completions.create.return_value = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(refusal=None, content=valid))])
-    result = CloudProvider("test-key", consent=True, client=client).extract("Basketball practice")
+    result = provider_type("test-key", consent=True, client=client).extract("Basketball practice")
     assert result.activity == "sports"
     assert client.chat.completions.create.call_args.kwargs["response_format"]["json_schema"]["strict"] is True
 
 
-def test_cloud_timeout_fallback():
+@pytest.mark.parametrize("provider_type", [CloudProvider, GeminiProvider])
+def test_cloud_timeout_fallback(provider_type):
     client = Mock()
     client.chat.completions.create.side_effect = TimeoutError("private payload test-key")
-    result = AIService(CloudProvider("test-key", consent=True, client=client)).extract("Guitar practice")
+    result = AIService(provider_type("test-key", consent=True, client=client)).extract("Guitar practice")
     assert result.mode == DEMO_LABEL
     assert "private" not in result.note
 

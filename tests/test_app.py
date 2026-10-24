@@ -15,6 +15,7 @@ def label(elements, text):
 def launch(tmp_path, monkeypatch):
     monkeypatch.setenv("OMOIDE_DATA_DIR", str(tmp_path))
     monkeypatch.delenv("OMOIDE_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     app = AppTest.from_file(str(APP), default_timeout=20).run()
     assert not app.exception
     return app
@@ -101,3 +102,39 @@ def test_ui_missing_cloud_key_stays_offline(tmp_path, monkeypatch):
     assert consent.disabled and not consent.value
     label(app.radio, "Your journal").set_value("Add memory").run()
     assert any("Demo · rule-based" in c.value for c in app.caption)
+
+
+def test_ui_gemini_missing_key_and_provider_selection(tmp_path, monkeypatch):
+    app = launch(tmp_path, monkeypatch)
+    label(app.radio, "Processing mode").set_value("Cloud AI").run()
+    label(app.selectbox, "AI provider").set_value("Google Gemini").run()
+    assert not app.exception
+    consent = label(app.checkbox, "I agree to send selected memory text to Google Gemini for processing.")
+    assert consent.disabled and not consent.value
+    assert any("GEMINI_API_KEY" in message.value for message in app.info)
+    label(app.radio, "Your journal").set_value("Add memory").run()
+    assert any("Demo · rule-based" in caption.value for caption in app.caption)
+
+
+def test_ui_provider_changes_require_new_consent(tmp_path, monkeypatch):
+    app = launch(tmp_path, monkeypatch)
+    monkeypatch.setenv("OMOIDE_API_KEY", "fake-openai-key")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-gemini-key")
+    label(app.radio, "Processing mode").set_value("Cloud AI").run()
+    label(app.checkbox, "I agree to send selected memory text to OpenAI for processing.").check().run()
+    label(app.radio, "Your journal").set_value("Add memory").run()
+    assert any("Cloud AI · OpenAI" in caption.value for caption in app.caption)
+    label(app.selectbox, "AI provider").set_value("Google Gemini").run()
+    consent = label(app.checkbox, "I agree to send selected memory text to Google Gemini for processing.")
+    assert not consent.value and not consent.disabled
+    assert any("Demo · rule-based" in caption.value for caption in app.caption)
+    consent.check().run()
+    assert not app.exception
+    assert any("Cloud AI · Google Gemini" in caption.value for caption in app.caption)
+    label(app.selectbox, "AI provider").set_value("OpenAI").run()
+    assert not label(app.checkbox, "I agree to send selected memory text to OpenAI for processing.").value
+    label(app.selectbox, "AI provider").set_value("Google Gemini").run()
+    label(app.checkbox, "I agree to send selected memory text to Google Gemini for processing.").check().run()
+    label(app.radio, "Processing mode").set_value("Demo (offline)").run()
+    label(app.radio, "Processing mode").set_value("Cloud AI").run()
+    assert not next(c for c in app.checkbox if c.key == "cloud_consent").value

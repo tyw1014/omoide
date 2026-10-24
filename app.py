@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 
-from ai_service import AIService, CloudProvider, DEMO_LABEL
+from ai_service import AIService, CloudProvider, GeminiProvider
 from chapter_service import ChapterService
 from config import data_dir
 from database import Database
@@ -71,6 +71,11 @@ def sidebar_navigation():
     st.session_state.pop("focus_entry", None)
     st.query_params.pop("entry", None)
 
+
+def reset_cloud_consent():
+    st.session_state.pop("cloud_consent", None)
+
+
 with st.sidebar:
     st.markdown('<p class="eyebrow">A little space for your life</p><h2 style="font-size:2.4rem;margin:0;color:#354c3c">omoide.</h2>', unsafe_allow_html=True)
     st.caption("思い出 · memories worth keeping")
@@ -78,14 +83,18 @@ with st.sidebar:
     st.radio("Your journal", ["Memories", "Add memory", "Rewind", "Life chapters"], key="page", label_visibility="collapsed", on_change=sidebar_navigation)
     st.markdown('<div class="journal-rule"></div>', unsafe_allow_html=True)
     with st.expander("Processing & privacy"):
-        processing = st.radio("Processing mode", ["Demo (offline)", "Cloud AI"], key="processing")
+        processing = st.radio("Processing mode", ["Demo (offline)", "Cloud AI"], key="processing", on_change=reset_cloud_consent)
         consent = False
-        key = os.getenv("OMOIDE_API_KEY")
+        provider_type = CloudProvider
+        key = None
         if processing == "Cloud AI":
-            st.caption("OpenAI receives the text, dates, and locations used in extraction or stories. Photos stay local and are never analyzed. Viewing records sends nothing.")
-            consent = st.checkbox("I agree to send selected memory text to OpenAI for processing.", key="cloud_consent", disabled=not bool(key))
+            provider_name = st.selectbox("AI provider", ["OpenAI", "Google Gemini"], key="cloud_provider", on_change=reset_cloud_consent)
+            provider_type = GeminiProvider if provider_name == "Google Gemini" else CloudProvider
+            key = os.getenv(provider_type.key_env)
+            st.caption(f"{provider_name} receives the text, dates, and locations used in extraction or stories. Photos stay local and are never analyzed. Viewing records sends nothing.")
+            consent = st.checkbox(f"I agree to send selected memory text to {provider_name} for processing.", key="cloud_consent", disabled=not bool(key))
             if not key:
-                st.info("Set OMOIDE_API_KEY in your local .env or secure environment settings. Demo Mode is available now.")
+                st.info(f"Set {provider_type.key_env} in your local .env or secure environment settings. Demo Mode is available now.")
             elif not consent:
                 st.caption("Until you opt in, processing uses Demo Mode.")
         else:
@@ -94,7 +103,7 @@ with st.sidebar:
             st.caption("Offline keyword rules and record excerpts. No live LLM inference or external transmission.")
     st.caption("Local journal · SQLite storage\n\nSingle-user prototype. Run only on a trusted private machine.")
 
-ai = AIService(CloudProvider(key, os.getenv("OMOIDE_MODEL", "gpt-4o-mini"), consent=True)) if processing == "Cloud AI" and consent and key else AIService()
+ai = AIService(provider_type(key, os.getenv(provider_type.model_env, provider_type.default_model), consent=True)) if processing == "Cloud AI" and consent and key else AIService()
 memories = MemoryService(db, root / "media", ai)
 chapters = ChapterService(db, ai)
 recaps = RecapService(db, ai)

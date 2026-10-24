@@ -89,20 +89,38 @@ This adds 36 fictional records between September 1 and October 11, 2026. Every s
 
 ## Optional cloud AI
 
-Copy `.env.example` to `.env` and set these variables locally:
+Copy `.env.example` to `.env` and configure either provider (or both). No key is needed for Demo Mode.
+
+For **OpenAI**, keep using the existing settings:
 
 ```dotenv
 OMOIDE_API_KEY=<your OpenAI key>
 OMOIDE_MODEL=gpt-4o-mini
 ```
 
-Keep `.env` out of Git. In Codex cloud, enter the optional `OMOIDE_API_KEY` securely in environment settings; the required HTTPS destination is `api.openai.com`. Never put a key in source code, chat, or setup scripts.
+For **Google Gemini**, get a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) and set:
 
-In **Processing & privacy**, select **Cloud AI**, then check the explicit consent box. Only a submitted extraction or story-generation action sends data: extraction uses the original text and supplied location; stories use the selected entries' original text, IDs, dates, and locations. Browsing and sample loading do not send journal records. Photographs are never transmitted. Switching back to Demo Mode clears consent.
+```dotenv
+GEMINI_API_KEY=<your Gemini API key>
+OMOIDE_GEMINI_MODEL=gemini-3.8-flash
+```
 
-The adapter uses OpenAI structured JSON schema output, validates it with Pydantic, and rejects source IDs outside the selected records. It uses a 25-second SDK timeout and one retry. Missing consent or credentials keeps processing offline; invalid JSON, refusal, timeout, or API failure produces a labeled Demo fallback with a visible notice. Cloud narratives are limited to 100 records per request; larger selections fall back to Demo Mode. Existing results keep the processing label used when they were created.
+Restart Streamlit after changing `.env`. `OMOIDE_GEMINI_MODEL` is optional; it defaults to `gemini-3.8-flash`. Set it to another Gemini model that supports structured output if required by your account or current model availability. Gemini uses Google's [OpenAI-compatible API](https://ai.google.dev/gemini-api/docs/openai), so no additional SDK or dependency installation is needed.
 
-**Live OpenAI requests have not been tested:** this environment has no API key. Mocked tests exercise structured requests, malformed output, timeout, and consent gates. Citations establish which records a result references; they cannot prove every model-generated sentence is factually correct. Review generated text and correct metadata as needed.
+Keep `.env` out of Git. In Codex cloud, enter credentials securely in environment settings:
+
+| Provider | API key variable | Optional model variable | Required HTTPS destination |
+| --- | --- | --- | --- |
+| OpenAI | `OMOIDE_API_KEY` | `OMOIDE_MODEL` | `api.openai.com` |
+| Google Gemini | `GEMINI_API_KEY` | `OMOIDE_GEMINI_MODEL` | `generativelanguage.googleapis.com` |
+
+Never put a key in source code, chat, or setup scripts. Configure only the key for the provider you want to use; an OpenAI key cannot authenticate Gemini, or vice versa.
+
+In **Processing & privacy**, select **Cloud AI**, choose **OpenAI** or **Google Gemini** under **AI provider**, then check the consent box naming that provider. Only a submitted extraction or story-generation action sends data to the selected provider: extraction uses the original text and supplied location; stories use the selected entries' original text, IDs, dates, and locations. Browsing and sample loading do not send journal records. Photographs are never transmitted. Switching providers or returning to Demo Mode clears consent and requires a fresh opt-in. A failed request falls back to offline processing; it does not send your records to the other cloud provider.
+
+Both adapters request structured JSON schema output, validate it with Pydantic, and reject source IDs outside the selected records. They use a 25-second SDK timeout and one retry. Missing consent or the selected provider's credentials keeps processing offline; invalid JSON, refusal, timeout, or API failure produces a labeled Demo fallback with a visible notice. Cloud narratives are limited to 100 records per request; larger selections fall back to Demo Mode. Existing results keep the provider label used when they were created, including after you switch providers.
+
+**Live OpenAI and Gemini requests have not been tested:** this environment has no API keys. Tests exercise the Gemini SDK request URL, authentication and structured payload with an in-process HTTP transport, plus metadata/recap/chapter integration, malformed output, API errors, timeout, invalid citations, and consent reset when changing providers. These tests do not establish real account access or model availability. Citations establish which records a result references; they cannot prove every model-generated sentence is factually correct. Review generated text and correct metadata as needed.
 
 ## Storage and privacy
 
@@ -129,7 +147,7 @@ See [VALIDATION.md](docs/VALIDATION.md) for executed checks and [DEMO.md](docs/D
 | `config.py` | `.env` loading and private data directory |
 | `database.py` | SQLite schema, queries, foreign keys, story invalidation |
 | `models.py` | Validated original-input and structured-output contracts |
-| `ai_service.py` | Provider interface, offline rules, OpenAI adapter, prompts |
+| `ai_service.py` | Provider interface, offline rules, OpenAI/Gemini adapters, prompts |
 | `memory_service.py` | Memory lifecycle and photograph storage |
 | `recap_service.py` | Calendar periods, database-derived statistics, recaps |
 | `chapter_service.py` | Conservative suggestions and chapter narratives |

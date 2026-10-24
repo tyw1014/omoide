@@ -1,4 +1,4 @@
-"""Offline processing and an optional, consent-gated structured OpenAI adapter."""
+"""Offline processing and consent-gated OpenAI / Google Gemini adapters."""
 import json
 import re
 from dataclasses import dataclass
@@ -17,6 +17,7 @@ TOPIC_RULES = {
 }
 DEMO_LABEL = "Demo · rule-based"
 CLOUD_LABEL = "Cloud AI · OpenAI"
+GEMINI_LABEL = "Cloud AI · Google Gemini"
 
 
 @dataclass
@@ -92,18 +93,23 @@ class DemoProvider:
 
 
 class CloudProvider:
+    """Structured OpenAI-compatible processing shared by both cloud providers."""
     label = CLOUD_LABEL
+    key_env = "OMOIDE_API_KEY"
+    model_env = "OMOIDE_MODEL"
+    default_model = "gpt-4o-mini"
+    base_url = "https://api.openai.com/v1/"
 
-    def __init__(self, api_key, model="gpt-4o-mini", *, consent=False, client=None):
+    def __init__(self, api_key, model=None, *, consent=False, client=None):
         if not consent:
             raise PermissionError("Explicit consent is required before cloud AI processing")
         if not api_key:
-            raise ValueError("Set OMOIDE_API_KEY before enabling cloud AI")
+            raise ValueError(f"Set {self.key_env} before enabling cloud AI")
         if client is None:
             from openai import OpenAI
-            client = OpenAI(api_key=api_key, timeout=25.0, max_retries=1)
+            client = OpenAI(api_key=api_key, base_url=self.base_url, timeout=25.0, max_retries=1)
         self.client = client
-        self.model = model
+        self.model = model or self.default_model
 
     def structured(self, schema, instructions, data):
         response = self.client.chat.completions.create(
@@ -132,6 +138,15 @@ class CloudProvider:
             raise ValueError("Cloud narrative limit exceeded")
         data = {"title": title, "records": [{"id": e["id"], "date": e["occurred_at"], "original": e["content"], "location": e["location"]} for e in entries]}
         return self.structured(Narrative, narrative_prompt(), data).verify_sources({e["id"] for e in entries})
+
+
+class GeminiProvider(CloudProvider):
+    """Google Gemini through its official OpenAI-compatible HTTPS endpoint."""
+    label = GEMINI_LABEL
+    key_env = "GEMINI_API_KEY"
+    model_env = "OMOIDE_GEMINI_MODEL"
+    default_model = "gemini-3.8-flash"
+    base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 
 class AIService:
