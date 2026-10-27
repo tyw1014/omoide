@@ -15,7 +15,7 @@ from recap_service import RecapService
 def completion(content):
     return {
         "id": "gemini-test", "object": "chat.completion", "created": 0,
-        "model": "gemini-3.8-flash",
+        "model": "gemini-3.5-flash-lite",
         "choices": [{"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": content}}],
     }
 
@@ -48,11 +48,11 @@ def test_gemini_sdk_endpoint_and_structured_metadata(monkeypatch):
         assert str(request.url) == "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         assert request.headers["authorization"] == "Bearer fake-gemini-key"
         body = json.loads(request.content)
-        assert body["model"] == "gemini-3.8-flash"
+        assert body["model"] == "gemini-3.5-flash-lite"
         assert body["response_format"]["type"] == "json_schema"
         assert body["response_format"]["json_schema"]["strict"] is True
         assert json.loads(body["messages"][1]["content"]) == {"original": "Basketball practice", "user_location": "Court"}
-        assert constructor_options[0]["timeout"] == 25.0
+        assert constructor_options[0]["timeout"] == 120.0
         assert constructor_options[0]["max_retries"] == 1
     finally:
         provider.client.close()

@@ -33,7 +33,9 @@ The expanded full suite passes **38 tests** on Python 3.12, with no failures or 
 - Both providers are tested for explicit consent, malformed output, and timeout fallback. Gemini HTTP authentication, rate-limit, and server errors fall back to Demo Mode without exposing raw error content.
 - Gemini metadata, persisted processing labels, weekly recaps, chapter stories, and invalid-citation rejection are tested with mocked responses.
 - Streamlit tests cover selecting Gemini, missing-key offline behavior, and fresh consent after switching providers or leaving Demo Mode.
-- Google's official [OpenAI compatibility cookbook](https://github.com/google-gemini/cookbook/blob/main/quickstarts/Get_started_OpenAI_Compatibility.ipynb) was checked for the endpoint, structured output, and the `gemini-3.8-flash` default. Model availability for a real account remains untested.
+- Google's official [OpenAI compatibility cookbook](https://github.com/google-gemini/cookbook/blob/main/quickstarts/Get_started_OpenAI_Compatibility.ipynb) was checked for the endpoint and structured output. The final configured Gemini model is `gemini-3.5-flash-lite`; model availability for a real account remains untested.
+
+The final configuration uses `gemini-3.5-flash-lite` in `.env.example` and the provider default, with a 120.0-second SDK timeout shared by OpenAI and Gemini. The SDK transport test checks the actual model sent and timeout supplied to the client. One retry remains enabled, so 120 seconds is not a total operation deadline.
 
 ## Not verified
 

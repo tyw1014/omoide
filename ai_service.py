@@ -107,7 +107,7 @@ class CloudProvider:
             raise ValueError(f"Set {self.key_env} before enabling cloud AI")
         if client is None:
             from openai import OpenAI
-            client = OpenAI(api_key=api_key, base_url=self.base_url, timeout=25.0, max_retries=1)
+            client = OpenAI(api_key=api_key, base_url=self.base_url, timeout=120.0, max_retries=1)
         self.client = client
         self.model = model or self.default_model
 
@@ -145,7 +145,7 @@ class GeminiProvider(CloudProvider):
     label = GEMINI_LABEL
     key_env = "GEMINI_API_KEY"
     model_env = "OMOIDE_GEMINI_MODEL"
-    default_model = "gemini-3.8-flash"
+    default_model = "gemini-3.5-flash-lite"
     base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 
